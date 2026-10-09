@@ -1,0 +1,30 @@
+{
+  "name": "ecommerce-saas",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HaseebRaza2004/ecommerce-saas.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HaseebRaza2004/ecommerce-saas/issues"
+  },
+  "homepage": "https://github.com/HaseebRaza2004/ecommerce-saas#readme",
+  "devDependencies": {
+    "turbo": "^2.11.7"
+  }
+}
