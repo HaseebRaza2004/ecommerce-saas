@@ -1,14 +1,17 @@
 import express from "express";
 import cors from "cors";
+import cokieParser from "cookie-parser";
 import { globalErrorHandler } from "./core/errors/errorHandler.js";
+import authRoutes from "./api/v1/auth/auth.routes.js";
 
 const app = express();
 
-// 1. Global Security Middlewares
-app.use(express.json({ limit: "10kb" })); // Payload size strictly locked to 10kb
+// Global Security Middlewares
+app.use(express.json({ limit: "10kb" }));
 app.use(cors());
+app.use(cokieParser());
 
-// 2. Base Health Route (Check karne ke liye ke server zinda hai ya nahi)
+// Health Check Endpoint (API Status)
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -16,7 +19,10 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// 3. The Global Error Handler (Yeh hamesha sabse aakhir mein aayega)
+// API Versioning & Routing
+app.use('/api/v1/auth', authRoutes);
+
+// Global Error Handler
 app.use(globalErrorHandler);
 
 export default app;
