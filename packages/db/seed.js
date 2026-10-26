@@ -2,37 +2,53 @@ import bcrypt from "bcrypt";
 import { neon } from "@neondatabase/serverless";
 import "dotenv/config";
 
-// 🚀 DATABASE SEEDER SCRIPT
-// Maqsad: System ko test karne ke liye ek Master Merchant insert karna.
-
+/**
+ * 🌱 IDEMPOTENT DATABASE SEEDER
+ * Why: Creates the first Master Merchant safely without crashing if run multiple times.
+ */
 const sql = neon(process.env.DATABASE_URL);
 
 const seedDatabase = async () => {
   try {
-    console.log("⏳ Seeding database...");
+    console.log("⏳ Seeding Master Merchant into NeonDB...");
 
-    // 1. Password Hash (Bcrypt)
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash("admin123", salt); // Default testing password
+    //  Hash the password for security
+    const hashedPassword = await bcrypt.hash("admin123", 12);
 
-    // 2. Raw SQL Insert (using Drizzle's Neon connection)
-    // Blueprint: Hybrid schema with JSONB defaults
-    await sql`
-            INSERT INTO merchants (
-                store_name, domain_url, email, password, 
-                theme_config, ui_components, geo_settings, localization
-            ) VALUES (
-                'Master Store', 'master.local', 'admin@store.com', ${hashedPassword},
-                '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb
-            )
-        `;
+    // Parameterized Template Literal
+    const result = await sql`
+      INSERT INTO merchants (
+        store_name,
+        domain_url,
+        email,
+        password,
+        theme_config,
+        ui_components,
+        geo_settings,
+        localization
+      ) VALUES (
+        'Master Store',
+        'master.local',
+        'admin@store.com',
+        ${hashedPassword},
+        '{}'::jsonb,
+        '{}'::jsonb,
+        '{}'::jsonb,
+        '{}'::jsonb
+      )
+      ON CONFLICT (email) DO NOTHING
+      RETURNING id, email, domain_url;
+    `;
 
-    console.log(
-      "✅ First Admin seeded successfully! Email: admin@store.com | Pass: admin123",
-    );
+    if (result.length > 0) {
+      console.log("✅ First Admin Seeded! ID:", result[0].id);
+    } else {
+      console.log("ℹ️ Admin (admin@store.com) already exists in NeonDB.");
+    }
+
     process.exit(0);
   } catch (error) {
-    console.error("❌ Seeding failed:", error);
+    console.error("❌ Seeding failed:", error.message);
     process.exit(1);
   }
 };

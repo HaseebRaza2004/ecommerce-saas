@@ -101,3 +101,18 @@ export const reviewStatusEnum = pgEnum("review_status", [
   "published",
   "flagged",
 ]);
+
+// 7. 4-Option Checkout Payment Categories & Anti-Scam Delivery Lock Enums
+export const checkoutPaymentCategoryEnum = pgEnum("checkout_payment_category", [
+  "instant_bank_qr", // Option 1: Raast / NayaPay / IBAN (0% Extra Fee)
+  "card_gateway",    // Option 2: Visa, Mastercard, PayPak, Amex (BYOK Gateway)
+  "mobile_wallet",   // Option 3: EasyPaisa, JazzCash, Apple/Google Pay
+  "cod",             // Option 4: Cash on Delivery
+]);
+
+export const deliveryVerificationTypeEnum = pgEnum("delivery_verification_type", [
+  "unverified",
+  "courier_webhook", // Locked for 3rd-party couriers (TCS, Leopards, DHL)
+  "rider_qr_pin",    // Locked for Own Rider (6-Digit Secret PIN / Customer QR)
+  "cod_cash_collected",
+]);

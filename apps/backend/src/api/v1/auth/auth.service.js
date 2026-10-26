@@ -1,34 +1,48 @@
 import bcrypt from "bcrypt";
 import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
-import { eq } from "drizzle-orm";
 import { AppError } from "../../../core/errors/AppError.js";
-import { env } from "../../../config/env.js";
+import "../../../../src/config/env.js";
 
-// Database Connection Setup
 const sql = neon(process.env.DATABASE_URL);
-const db = drizzle(sql);
 
-// Admin Login Service
+//  MICRO-FUNCTION 1: Fetch Merchant Safely by Email
+
+const findMerchantByEmail = async (email) => {
+  const rows = await sql`
+    SELECT id, store_name, domain_url, email, password, status
+    FROM merchants
+    WHERE email = ${email}
+    LIMIT 1;
+  `;
+  return rows[0] || null;
+};
+
+//  MICRO-FUNCTION 2: Verify Password & Account Status
+ 
 export const adminLoginService = async (email, plainPassword) => {
-  const result = await db.execute(
-    `SELECT * FROM merchants WHERE email = '${email}' LIMIT 1`,
-  );
+  const merchant = await findMerchantByEmail(email);
 
-  if (result.rows.length === 0) {
-    throw new AppError("Invalid Credentials.", 401);
+  // Generic error message so hackers cannot enumerate valid emails
+  if (!merchant) {
+    throw new AppError("Invalid email or password.", 401);
   }
 
-  const merchant = result.rows[0];
-
-  const isPasswordMatch = await bcrypt.compare(
+  const isPasswordValid = await bcrypt.compare(
     plainPassword,
     merchant.password,
   );
-
-  if (!isPasswordMatch) {
-    throw new AppError("Invalid Credentials.", 401);
+  if (!isPasswordValid) {
+    throw new AppError("Invalid email or password.", 401);
   }
+
+  // Blueprint Kill Switch Check: Block suspended stores
+  if (merchant.status === "suspended") {
+    throw new AppError(
+      "Your store is currently suspended due to billing or policy violation.",
+      403,
+    );
+  }
+
   return {
     merchant_id: merchant.id,
     store_name: merchant.store_name,

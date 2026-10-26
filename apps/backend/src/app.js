@@ -8,7 +8,12 @@ const app = express();
 
 // Global Security Middlewares
 app.use(express.json({ limit: "10kb" }));
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
 app.use(cokieParser());
 
 // Health Check Endpoint (API Status)
@@ -20,7 +25,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // API Versioning & Routing
-app.use('/api/v1/auth', authRoutes);
+app.use("/api/v1/auth", authRoutes);
 
 // Global Error Handler
 app.use(globalErrorHandler);
