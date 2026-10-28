@@ -1,30 +1,62 @@
-import { sendResponse } from '../../../utils/responseHandler.js';
-import { sendTokenResponse } from '../../../utils/jwt.util.js';
-import { adminLoginService } from './auth.service.js';
+import { sendResponse } from "../../../utils/responseHandler.js";
+import { sendTokenResponse, clearTokenCookie } from "../../../utils/jwt.util.js";
+import { blacklistToken } from "../../../core/redis/tokenBlacklist.service.js";
+import { validateLoginInput } from "./validators/login.validator.js";
+import { validateRegisterInput } from "./validators/register.validator.js";
+import { adminRegisterService } from "./services/registerAdmin.service.js";
+import { adminLoginService } from "./services/loginAdmin.service.js";
+import { getAdminProfileService } from "./services/getAdminProfile.service.js";
 
-/**
- * 🛡️ ADMIN LOGIN CONTROLLER
- * Responsibility: Validate Request -> Call Service Layer -> Send Secure Token.
- */
+export const adminRegister = async (req, res, next) => {
+  try {
+    const cleanData = validateRegisterInput(req.body);
+    const merchantData = await adminRegisterService(cleanData);
+    return sendTokenResponse(
+      merchantData,
+      201,
+      res,
+      "Store created and logged in successfully.",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const adminLogin = async (req, res, next) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = validateLoginInput(req.body);
+    const merchantData = await adminLoginService(email, password);
+    return sendTokenResponse(
+      merchantData,
+      200,
+      res,
+      "Admin logged in successfully.",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
-        // 1. Payload Validation (Strict Types)
-        if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
-            return sendResponse(res, 400, "Invalid email or password format.");
-        }
+export const getAdminMe = async (req, res, next) => {
+  try {
+    const profile = await getAdminProfileService(req.merchantId);
+    return sendResponse(
+      res,
+      200,
+      "Merchant profile fetched successfully.",
+      profile,
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
-        const sanitizedEmail = email.toLowerCase().trim();
-
-        // 2. Call Service Layer (Database Logic)
-        // Agar email/password ghalat hue, toh service khud AppError throw karegi jo Global Handler pakar lega.
-        const merchantData = await adminLoginService(sanitizedEmail, password);
-
-        // 3. Generate Token & Send Cookie (Successful Login)
-        return sendTokenResponse(merchantData, 200, res, "Admin logged in successfully.");
-
-    } catch (error) {
-        next(error); // Passes AppError (e.g., "Invalid Credentials") to Global Error Handler
-    }
+export const adminLogout = async (req, res, next) => {
+  try {
+    await blacklistToken(req.rawToken, 900);
+    clearTokenCookie(res);
+    return sendResponse(res, 200, "Logged out safely. Session terminated.");
+  } catch (error) {
+    next(error);
+  }
 };

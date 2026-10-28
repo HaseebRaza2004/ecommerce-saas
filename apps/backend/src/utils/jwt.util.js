@@ -1,39 +1,53 @@
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 /**
- * 🛡️ ENTERPRISE JWT & COOKIE ENGINE
- * Responsibility: Securely generate JWT and attach it to an HttpOnly cookie.
- * Cyber Security Rule: Tokens must NEVER be accessible via frontend JavaScript (document.cookie).
+ * 🛡️ MICRO-FUNCTION 1: Generate Signed JWT & Attach HttpOnly Cookie
  */
 export const sendTokenResponse = (merchant, statusCode, res, message) => {
-  // 1. Generate JWT Token
-  // Payload mein sirf zaroori identifier (ID aur role) daalein, sensitive info nahi.
   const token = jwt.sign(
-    { id: merchant.merchant_id, role: "admin" },
-    process.env.JWT_SECRET || "super_secret_fallback_key_2026", // Production mein fallback use nahi hoga
-    { expiresIn: "15m" }, // Security: Short-lived access token (15 mins) to prevent token hijacking
+    {
+      id: merchant.merchant_id,
+      role: merchant.role || "super_merchant",
+      jti: crypto.randomUUID(), // Unique token ID to prevent replay collisions
+    },
+    process.env.JWT_SECRET || "super_secret_fallback_key_2026",
+    { expiresIn: "15m" },
   );
 
-  // 2. Cookie Options (Hacker-Proofing)
   const cookieOptions = {
-    expires: new Date(Date.now() + 15 * 60 * 1000), // 15 Minutes
-    httpOnly: true, // XSS Protection: Frontend JS is cookie ko read nahi kar sakti
-    secure: process.env.NODE_ENV === "production", // Production mein sirf HTTPS par jayegi
-    sameSite: "strict", // CSRF Protection: Kisi aur website se request aayi toh token nahi jayega
+    expires: new Date(Date.now() + 15 * 60 * 1000),
+    httpOnly: true, // Blocks XSS document.cookie theft
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict", // Blocks CSRF cross-origin requests
+    path: "/",
   };
 
-  // 3. Send Response (Token cookie mein, data JSON mein)
-  res
+  return res
     .status(statusCode)
     .cookie("jwt", token, cookieOptions)
     .json({
       error: false,
       status: statusCode,
-      message: message,
+      message,
       data: {
         merchant_id: merchant.merchant_id,
         store_name: merchant.store_name,
         domain_url: merchant.domain_url,
+        status: merchant.status,
       },
     });
+};
+
+/**
+ * 🧹 MICRO-FUNCTION 2: Clear HttpOnly Cookie on Logout
+ */
+export const clearTokenCookie = (res) => {
+  res.cookie("jwt", "logged_out", {
+    expires: new Date(Date.now() + 1000),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+  });
 };

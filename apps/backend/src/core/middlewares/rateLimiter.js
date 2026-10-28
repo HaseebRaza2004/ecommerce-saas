@@ -1,31 +1,47 @@
 import { redisClient } from "../../config/redis.client.js";
 import { sendResponse } from "../../utils/responseHandler.js";
+import { extractClientIp } from "../../utils/ip.util.js";
 
-// Rate Limiter Middleware
-export const rateLimiter = (limit = 60, windowInSeconds = 60) => {
+// Rate Limiter Middleware: Limit Requests per IP or Merchant
+export const rateLimiter = (
+  limit = 60,
+  windowInSeconds = 60,
+  scope = "global",
+) => {
   return async (req, res, next) => {
     try {
-      const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-      const redisKey = `rate-limit:${ip}`;
+      const ip = extractClientIp(req);
+      const actorId = req.merchantId
+        ? `merchant:${req.merchantId}:ip:${ip}`
+        : `ip:${ip}`;
+      const redisKey = `rl:${scope}:${actorId}`;
 
-      const requests = await redisClient.incr(redisKey);
+      const pipeline = redisClient.pipeline();
+      pipeline.incr(redisKey);
+      pipeline.ttl(redisKey);
+      const results = await pipeline.exec();
 
-      if (requests === 1) {
+      const requestCount = results[0][1];
+      const currentTtl = results[1][1];
+
+      if (requestCount === 1 || currentTtl === -1) {
         await redisClient.expire(redisKey, windowInSeconds);
       }
 
-      if (requests > limit) {
-        console.warn(`🚨 Rate Limit Exceeded for IP: ${ip}`);
+      res.setHeader("X-RateLimit-Limit", limit);
+      res.setHeader("X-RateLimit-Remaining", Math.max(0, limit - requestCount));
+
+      if (requestCount > limit) {
         return sendResponse(
           res,
           429,
-          "Too many requests. Please try again later.",
+          "Too many requests. Please wait before trying again.",
         );
       }
 
       next();
     } catch (error) {
-      console.error("⚠️ Rate Limiter Error:", error);
+      console.error("⚠️ Rate Limiter Fallback:", error.message);
       next();
     }
   };
