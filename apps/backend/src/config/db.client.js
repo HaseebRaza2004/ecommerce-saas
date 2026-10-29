@@ -1,10 +1,7 @@
-import { neon, neonConfig } from "@neondatabase/serverless";
+import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "../../../../packages/db/schema/index.js";
 import "./env.js";
-
-// Reuse HTTP Keep-Alive connections to cut DB latency by 70%
-neonConfig.fetchConnectionCache = true;
 
 const databaseUrl = process.env.DATABASE_URL;
 

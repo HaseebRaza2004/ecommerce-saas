@@ -6,6 +6,7 @@ import authRoutes from "./api/v1/auth/auth.routes.js";
 import kycRoutes from "./api/v1/kyc/kyc.routes.js";
 import storageRoutes from "./api/v1/storage/storage.routes.js";
 import categoryRoutes from "./api/v1/categories/category.routes.js";
+import productRoutes from "./api/v1/products/product.routes.js";
 // Temporary request logger middleware for debugging purposes
 import { requestLogger } from "./core/middlewares/requestLogger.js";
 
@@ -37,6 +38,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/kyc", kycRoutes);
 app.use("/api/v1/storage", storageRoutes);
 app.use("/api/v1/categories", categoryRoutes);
+app.use("/api/v1/products", productRoutes);
 
 // Global Error Handler
 app.use(globalErrorHandler);
