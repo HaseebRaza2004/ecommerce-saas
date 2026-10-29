@@ -1,6 +1,7 @@
-/*
- temperory request logger middleware for debugging purposes
- Request Logger Middleware 
+/**
+ * Request Logger Middleware
+ * Logs API request duration, status, and unique request ID.
+ * Useful for debugging and performance monitoring.
  */
 
 import { randomUUID } from "node:crypto";
@@ -9,6 +10,12 @@ export function requestLogger(req, res, next) {
   const start = process.hrtime.bigint();
   const requestId = randomUUID();
   let logged = false;
+
+  // Attach the unique ID to the response headers.
+  res.setHeader("X-Request-Id", requestId);
+
+  // Make the ID available to downstream middleware and routes.
+  req.requestId = requestId;
 
   const logRequest = (event) => {
     if (logged) return;

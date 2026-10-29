@@ -4,8 +4,9 @@ import cokieParser from "cookie-parser";
 import { globalErrorHandler } from "./core/errors/errorHandler.js";
 import authRoutes from "./api/v1/auth/auth.routes.js";
 import kycRoutes from "./api/v1/kyc/kyc.routes.js";
+import storageRoutes from "./api/v1/storage/storage.routes.js";
 // Temporary request logger middleware for debugging purposes
-import { requestLogger } from "./middleware/requestLogger.js";
+import { requestLogger } from "./core/middlewares/requestLogger.js";
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.get("/api/health", (req, res) => {
 // API Versioning & Routing
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/kyc", kycRoutes);
+app.use("/api/v1/storage", storageRoutes);
 
 // Global Error Handler
 app.use(globalErrorHandler);

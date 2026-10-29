@@ -2,7 +2,6 @@ import { redisClient } from "../../config/redis.client.js";
 import { sendResponse } from "../../utils/responseHandler.js";
 import { extractClientIp } from "../../utils/ip.util.js";
 
-// Rate Limiter Middleware: Limit Requests per IP or Merchant
 export const rateLimiter = (
   limit = 60,
   windowInSeconds = 60,
@@ -16,17 +15,13 @@ export const rateLimiter = (
         : `ip:${ip}`;
       const redisKey = `rl:${scope}:${actorId}`;
 
+      // ⚡ Single-Hop Pipeline: INCR and EXPIRE NX in 1 single network round-trip
       const pipeline = redisClient.pipeline();
       pipeline.incr(redisKey);
-      pipeline.ttl(redisKey);
+      pipeline.call("EXPIRE", redisKey, windowInSeconds, "NX");
       const results = await pipeline.exec();
 
       const requestCount = results[0][1];
-      const currentTtl = results[1][1];
-
-      if (requestCount === 1 || currentTtl === -1) {
-        await redisClient.expire(redisKey, windowInSeconds);
-      }
 
       res.setHeader("X-RateLimit-Limit", limit);
       res.setHeader("X-RateLimit-Remaining", Math.max(0, limit - requestCount));
@@ -41,7 +36,6 @@ export const rateLimiter = (
 
       next();
     } catch (error) {
-      console.error("⚠️ Rate Limiter Fallback:", error.message);
       next();
     }
   };
