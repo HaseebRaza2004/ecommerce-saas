@@ -9,6 +9,7 @@ import categoryRoutes from "./api/v1/categories/category.routes.js";
 import productRoutes from "./api/v1/products/product.routes.js";
 import promotionRoutes from "./api/v1/promotions/promotion.routes.js";
 import cartRoutes from "./api/v1/cart/cart.routes.js";
+import logisticsRoutes from "./api/v1/logistics/logistics.routes.js";
 // Temporary request logger middleware for debugging purposes
 import { requestLogger } from "./core/middlewares/requestLogger.js";
 
@@ -43,6 +44,7 @@ app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/promotions", promotionRoutes);
 app.use("/api/v1/cart", cartRoutes);
+app.use("/api/v1/logistics", logisticsRoutes);
 
 // Global Error Handler
 app.use(globalErrorHandler);
