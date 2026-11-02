@@ -11,6 +11,7 @@ import promotionRoutes from "./api/v1/promotions/promotion.routes.js";
 import cartRoutes from "./api/v1/cart/cart.routes.js";
 import logisticsRoutes from "./api/v1/logistics/logistics.routes.js";
 import orderRoutes from "./api/v1/orders/order.routes.js";
+import paymentRoutes from "./api/v1/payments/payment.routes.js";
 // Temporary request logger middleware for debugging purposes
 import { requestLogger } from "./core/middlewares/requestLogger.js";
 
@@ -47,6 +48,7 @@ app.use("/api/v1/promotions", promotionRoutes);
 app.use("/api/v1/cart", cartRoutes);
 app.use("/api/v1/logistics", logisticsRoutes);
 app.use("/api/v1/orders", orderRoutes);
+app.use("/api/v1/payments", paymentRoutes);
 
 // Global Error Handler
 app.use(globalErrorHandler);
