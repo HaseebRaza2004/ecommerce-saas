@@ -1,23 +1,19 @@
 import { sendResponse } from "../../utils/responseHandler.js";
 
-/**
- * 🛡️ CENTRALIZED ENTERPRISE ERROR HANDLER (Supports Drizzle ORM err.cause Unwrapping)
- */
+// Global Error Handler Middleware
 export const globalErrorHandler = (err, req, res, next) => {
   let statusCode = err.status || err.statusCode || 500;
   let message = err.message || "Internal Server Error";
 
-  // Extract PostgreSQL error code & constraint from either top-level or Drizzle's err.cause
   const pgCode = err.code || err.cause?.code;
   const pgConstraint = err.constraint || err.cause?.constraint || "";
+  const rawDbMessage = (err.cause?.message || err.message || "").toLowerCase();
 
-  // 1. Handle Malformed JSON Body
   if (err.type === "entity.parse.failed") {
     statusCode = 400;
     message = "Malformed JSON payload in request body.";
   }
 
-  // 2. Handle PostgreSQL Unique Constraint Violation (23505) Cleanly (No Console Dump!)
   if (pgCode === "23505") {
     statusCode = 409;
     if (pgConstraint.includes("bank_transaction_id")) {
@@ -30,13 +26,15 @@ export const globalErrorHandler = (err, req, res, next) => {
     }
   }
 
-  // 3. Handle PostgreSQL Invalid UUID Format (22P02)
   if (pgCode === "22P02") {
     statusCode = 400;
-    message = "Invalid identifier format provided.";
+    if (rawDbMessage.includes("enum")) {
+      message = `Invalid status or enum option provided in request: ${err.cause?.message || err.message}`;
+    } else {
+      message = "Invalid UUID identifier format provided.";
+    }
   }
 
-  // 4. Only log real unexpected 500 server crashes
   if (statusCode === 500) {
     console.error("🔥 [CRITICAL SERVER ERROR]:", err);
     if (process.env.NODE_ENV === "production") {

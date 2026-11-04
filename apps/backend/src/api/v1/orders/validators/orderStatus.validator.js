@@ -6,6 +6,7 @@ const VALID_ORDER_STATUSES = new Set([
   "pending_payment",
   "pending_verification",
   "processing",
+  "shipped",
   "dispatched",
   "out_for_delivery",
   "delivered",
