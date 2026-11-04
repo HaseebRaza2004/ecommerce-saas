@@ -8,14 +8,14 @@ const cleanStr = (val, max = 150) =>
         .slice(0, max)
     : "";
 
-// Validate and normalize product variants input
+// Validate and clean the variants input for a product
 export const validateVariantsInput = (variants, fallbackBasePrice) => {
   if (!Array.isArray(variants) || variants.length === 0) {
-    // Default single variant if merchant didn't specify multiple sizes
     return [
       {
         title: "Default",
         options: { default: true },
+        imageUrl: null,
         sku: `SKU-${Date.now()}`,
         barcode: null,
         price: fallbackBasePrice,
@@ -28,17 +28,25 @@ export const validateVariantsInput = (variants, fallbackBasePrice) => {
   }
 
   if (variants.length > 100) {
-    throw new AppError("Maximum 100 variants allowed per product.", 400);
+    throw new AppError(
+      "Maximum 100 Size/Color variant combinations allowed per product.",
+      400,
+    );
   }
 
   return variants.map((v, idx) => {
-    const title = cleanStr(v.title, 150);
+    const size = cleanStr(v.size || v.options?.size, 50);
+    const color = cleanStr(v.color || v.options?.color, 50);
+    const colorHex = cleanStr(v.colorHex || v.options?.colorHex, 20);
+
+    const autoTitle = [size, color].filter(Boolean).join(" / ");
+    const title = cleanStr(v.title, 150) || autoTitle;
     const sku = cleanStr(v.sku, 100);
     const priceNum = Number(v.price);
 
     if (!title || !sku) {
       throw new AppError(
-        `Variant #${idx + 1} requires both a title (e.g., 'SM', '42') and SKU.`,
+        `Variant #${idx + 1} requires a title (or size/color) and SKU.`,
         400,
       );
     }
@@ -49,15 +57,22 @@ export const validateVariantsInput = (variants, fallbackBasePrice) => {
       );
     }
 
-    const stockCount = Math.max(0, parseInt(v.stockCount ?? 0, 10) || 0);
-    const weightGrams = Math.max(0, parseInt(v.weightGrams ?? 0, 10) || 0);
+    const options = {
+      ...(v.options && typeof v.options === "object" ? v.options : {}),
+      ...(size ? { size } : {}),
+      ...(color ? { color } : {}),
+      ...(colorHex ? { colorHex } : {}),
+    };
+
+    const imageUrl =
+      typeof v.imageUrl === "string" && v.imageUrl.startsWith("https://")
+        ? v.imageUrl.trim()
+        : null;
 
     return {
       title,
-      options:
-        v.options && typeof v.options === "object"
-          ? v.options
-          : { size: title },
+      options,
+      imageUrl,
       sku,
       barcode: v.barcode ? cleanStr(v.barcode, 100) : null,
       price: priceNum.toFixed(2),
@@ -68,8 +83,8 @@ export const validateVariantsInput = (variants, fallbackBasePrice) => {
         v.regionalPrices && typeof v.regionalPrices === "object"
           ? v.regionalPrices
           : {},
-      stockCount,
-      weightGrams,
+      stockCount: Math.max(0, parseInt(v.stockCount ?? 0, 10) || 0),
+      weightGrams: Math.max(0, parseInt(v.weightGrams ?? 0, 10) || 0),
     };
   });
 };

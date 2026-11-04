@@ -38,6 +38,8 @@ export const getCategoriesService = async (merchantId) => {
           slug: categories.slug,
           parentId: categories.parentId,
           path: categories.path,
+          imageUrl: categories.imageUrl,
+          iconUrl: categories.iconUrl,
           createdAt: categories.createdAt,
         })
         .from(categories)

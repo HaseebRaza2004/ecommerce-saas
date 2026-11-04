@@ -2,7 +2,6 @@ import {
   pgTable,
   uuid,
   varchar,
-  decimal,
   boolean,
   jsonb,
   timestamp,
@@ -44,6 +43,11 @@ export const merchantPaymentConfigs = pgTable(
       .notNull()
       .default(false),
     lastKeyCheckAt: timestamp("last_key_check_at"),
+    // Option 3: Multiple Local Mobile Wallets (e.g., ["jazzcash", "easypaisa"])
+    enabledWallets: jsonb("enabled_wallets").notNull().default([]),
+    encryptedWalletsVault: jsonb("encrypted_wallets_vault")
+      .notNull()
+      .default({}),
     autoFallbackToBankAndCod: boolean("auto_fallback_to_bank_and_cod")
       .notNull()
       .default(true),

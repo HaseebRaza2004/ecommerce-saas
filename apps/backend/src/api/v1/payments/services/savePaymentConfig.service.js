@@ -4,21 +4,24 @@ import { encryptJsonVault } from "../../../../utils/crypto.util.js";
 
 const { merchantPaymentConfigs } = schema;
 
-// Encrypt BYOK Payment Keys (AES-256-GCM) & Upsert Store Payment Settings
 export const savePaymentConfigService = async (merchantId, data) => {
   const hasGatewayKeys = Object.keys(data.gatewayKeys).length > 0;
-  const encryptedGatewayKeys = hasGatewayKeys
-    ? encryptJsonVault(data.gatewayKeys)
-    : {};
+  const hasWalletKeys = Object.keys(data.walletCredentials || {}).length > 0;
 
   const record = {
     merchantId,
     enableInstantBankQr: data.enableInstantBankQr,
     bankQrDetails: data.bankQrDetails,
     activeGatewayProvider: data.activeGatewayProvider,
-    encryptedGatewayKeys,
+    encryptedGatewayKeys: hasGatewayKeys
+      ? encryptJsonVault(data.gatewayKeys)
+      : {},
     isProductionKeyVerified: data.isProductionKeyVerified,
     lastKeyCheckAt: data.isProductionKeyVerified ? new Date() : null,
+    enabledWallets: data.enabledWallets || [],
+    encryptedWalletsVault: hasWalletKeys
+      ? encryptJsonVault(data.walletCredentials)
+      : {},
     autoFallbackToBankAndCod: data.autoFallbackToBankAndCod,
     deductGatewayFeeOnRefund: data.deductGatewayFeeOnRefund,
     enableCod: data.enableCod,
@@ -43,10 +46,8 @@ export const savePaymentConfigService = async (merchantId, data) => {
     bank_qr_details: saved.bankQrDetails,
     active_gateway_provider: saved.activeGatewayProvider,
     is_production_key_verified: saved.isProductionKeyVerified,
-    auto_fallback_to_bank_and_cod: saved.autoFallbackToBankAndCod,
-    deduct_gateway_fee_on_refund: saved.deductGatewayFeeOnRefund,
+    enabled_wallets: saved.enabledWallets,
     enable_cod: saved.enableCod,
-    require_advance_delivery_fee_for_cod: saved.requireAdvanceDeliveryFeeForCod,
     updated_at: saved.updatedAt,
   };
 };

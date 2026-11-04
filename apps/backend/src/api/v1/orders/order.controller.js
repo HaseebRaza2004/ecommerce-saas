@@ -7,6 +7,8 @@ import {
   trackOrderPublicService,
 } from "./services/getOrders.service.js";
 import { verifyOrderDeliveryService } from "./services/verifyDelivery.service.js";
+import { validateUpdateOrderStatus } from "./validators/orderStatus.validator.js";
+import { updateOrderStatusService } from "./services/updateOrderStatus.service.js";
 
 export const placeOrder = async (req, res, next) => {
   try {
@@ -57,6 +59,21 @@ export const verifyOrderDelivery = async (req, res, next) => {
       res,
       200,
       "Delivery handshake verified. Order marked as Delivered.",
+      updated,
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateOrderStatus = async (req, res, next) => {
+  try {
+    const cleanData = validateUpdateOrderStatus(req.params.id, req.body);
+    const updated = await updateOrderStatusService(req.merchantId, cleanData);
+    return sendResponse(
+      res,
+      200,
+      "Order status updated successfully.",
       updated,
     );
   } catch (error) {

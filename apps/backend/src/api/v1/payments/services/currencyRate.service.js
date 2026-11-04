@@ -1,7 +1,6 @@
 import { redisClient } from "../../../../config/redis.client.js";
 import { getL1Cache, setL1Cache } from "../../../../core/redis/l1Cache.util.js";
 
-// Fallback benchmark rates (1 PKR -> Target Currency) if external FX feed is offline
 const FALLBACK_PKR_RATES = {
   PKR: 1.0,
   USD: 0.0036,
@@ -26,7 +25,24 @@ const COUNTRY_TO_CURRENCY = {
   AU: "AUD",
 };
 
-// Retrieve Currency Display Quote for Checkout (PKR -> Target Currency)
+// Fetch Live PKR Exchange Rates with 2.5s Timeout & 24-Hour Redis Cache (86400s)
+const fetchLivePkrRates = async () => {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch("https://open.er-api.com/v6/latest/PKR", {
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) return FALLBACK_PKR_RATES;
+    const data = await res.json();
+    return data?.rates || FALLBACK_PKR_RATES;
+  } catch {
+    return FALLBACK_PKR_RATES;
+  }
+};
+
 export const getCurrencyDisplayQuoteService = async (
   countryCode = "PK",
   amountPkr = 1000,
@@ -35,7 +51,7 @@ export const getCurrencyDisplayQuoteService = async (
     .toUpperCase()
     .trim();
   const targetCurrency = COUNTRY_TO_CURRENCY[cleanCountry] || "USD";
-  const cacheKey = "global:fx:pkr_rates";
+  const cacheKey = "global:fx:live_pkr_rates_24h";
 
   let rates = getL1Cache(cacheKey);
   if (!rates) {
@@ -43,15 +59,14 @@ export const getCurrencyDisplayQuoteService = async (
     if (cachedRedis) {
       rates = JSON.parse(cachedRedis);
     } else {
-      rates = FALLBACK_PKR_RATES;
-      await redisClient.set(cacheKey, JSON.stringify(rates), "EX", 21600); // 6 Hours TTL
+      rates = await fetchLivePkrRates();
+      await redisClient.set(cacheKey, JSON.stringify(rates), "EX", 86400); // Locked for 24 Hours
     }
-    setL1Cache(cacheKey, rates, 300);
+    setL1Cache(cacheKey, rates, 600);
   }
 
-  const rate = rates[targetCurrency] || rates.USD;
+  const rate = Number(rates[targetCurrency] || FALLBACK_PKR_RATES.USD);
   const numericPkr = Math.max(0, Number(amountPkr) || 0);
-  const convertedDisplayAmount = (numericPkr * rate).toFixed(2);
 
   return {
     detected_country: cleanCountry,
@@ -59,7 +74,8 @@ export const getCurrencyDisplayQuoteService = async (
     base_amount: numericPkr.toFixed(2),
     display_currency: targetCurrency,
     exchange_rate: rate,
-    display_amount_approx: convertedDisplayAmount,
+    display_amount_approx: (numericPkr * rate).toFixed(2),
+    cache_ttl_policy: "24_hours_live_fx",
     settlement_rule: "Charged in PKR at checkout (Zero FX loss for merchant).",
   };
 };

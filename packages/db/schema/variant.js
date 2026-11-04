@@ -25,6 +25,7 @@ export const productVariants = pgTable(
       .notNull(),
     title: varchar("title", { length: 150 }).notNull(), // e.g., "SM", "LG", "42", "3/29 Copper"
     options: jsonb("options").notNull().default({}), // e.g., { size: "LG" } or { number: 42 }
+    imageUrl: varchar("image_url", { length: 500 }), // Switches photo when buyer clicks a Color swatch
     sku: varchar("sku", { length: 100 }).notNull(),
     barcode: varchar("barcode", { length: 100 }), // POS Scanner support
     price: decimal("price", { precision: 10, scale: 2 }).notNull(), // ✅ Har size/number ka alag rate

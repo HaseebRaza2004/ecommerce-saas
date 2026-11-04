@@ -14,6 +14,8 @@ export const categories = pgTable(
     slug: varchar("slug", { length: 150 }).notNull(),
     parentId: uuid("parent_id"), 
     path: varchar("path", { length: 500 }).notNull(), 
+    imageUrl: varchar("image_url", { length: 500 }),
+    iconUrl: varchar("icon_url", { length: 500 }),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => {

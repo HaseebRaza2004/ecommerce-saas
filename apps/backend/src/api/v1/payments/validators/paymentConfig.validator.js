@@ -75,12 +75,27 @@ export const validatePaymentConfigInput = (body) => {
 
   const { isLive, sanitized } = verifyLiveGatewayKeys(body.gatewayKeys);
 
+  const enabledWallets = Array.isArray(body.enabledWallets)
+    ? [
+        ...new Set(
+          body.enabledWallets
+            .map((w) => cleanStr(w, 30).toLowerCase())
+            .filter(Boolean),
+        ),
+      ]
+    : [];
+  const { sanitized: cleanWallets } = verifyLiveGatewayKeys(
+    body.walletCredentials,
+  );
+
   return {
     enableInstantBankQr: body.enableInstantBankQr !== false,
     bankQrDetails,
     activeGatewayProvider: provider,
     gatewayKeys: sanitized,
     isProductionKeyVerified: Boolean(provider && isLive),
+    enabledWallets,
+    walletCredentials: cleanWallets,
     autoFallbackToBankAndCod: body.autoFallbackToBankAndCod !== false,
     deductGatewayFeeOnRefund: body.deductGatewayFeeOnRefund !== false,
     enableCod: body.enableCod !== false,

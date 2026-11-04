@@ -4,6 +4,7 @@ import { createProductService } from "./services/createProduct.service.js";
 import { getProductsService } from "./services/getProducts.service.js";
 import { getProductDetailService } from "./services/getProductDetail.service.js";
 import { deleteProductService } from "./services/deleteProduct.service.js";
+import { updateProductService } from "./services/updateProduct.service.js";
 
 export const createProduct = async (req, res, next) => {
   try {
@@ -50,6 +51,25 @@ export const deleteProduct = async (req, res, next) => {
   try {
     const deleted = await deleteProductService(req.merchantId, req.params.id);
     return sendResponse(res, 200, "Product deleted successfully.", deleted);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProduct = async (req, res, next) => {
+  try {
+    const cleanData = validateCreateProduct(req.body);
+    const updated = await updateProductService(
+      req.merchantId,
+      req.params.id,
+      cleanData,
+    );
+    return sendResponse(
+      res,
+      200,
+      "Product and variants updated successfully.",
+      updated,
+    );
   } catch (error) {
     next(error);
   }

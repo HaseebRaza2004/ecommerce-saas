@@ -3,16 +3,26 @@ import { generateSeoSlug } from "../../../../utils/slug.util.js";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const cleanText = (str, maxLen = 100) =>
+  typeof str === "string"
+    ? str
+        .replace(/[<>'"`;(){}]/g, "")
+        .trim()
+        .slice(0, maxLen)
+    : "";
 
-const cleanText = (str, maxLen = 100) => {
-  if (typeof str !== "string") return "";
-  return str
-    .replace(/[<>'"`;(){}]/g, "")
-    .trim()
-    .slice(0, maxLen);
+const cleanHttpsUrl = (url) => {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed.startsWith("https://") || trimmed.length > 500) {
+    throw new AppError(
+      "Category imageUrl and iconUrl must be valid HTTPS URLs.",
+      400,
+    );
+  }
+  return trimmed;
 };
 
-// Validate the request body for creating a new category, ensuring proper name, slug, and optional parentId.
 export const validateCreateCategory = (body) => {
   if (!body || typeof body !== "object") {
     throw new AppError("Invalid category request payload.", 400);
@@ -26,30 +36,26 @@ export const validateCreateCategory = (body) => {
     );
   }
 
-  // Allow custom SEO slug override or auto-generate from name, ensuring it's valid and SEO-friendly.
-  const rawSlug = body.slug ? cleanText(body.slug, 150) : name;
-  const slug = generateSeoSlug(rawSlug);
-
+  const slug = generateSeoSlug(body.slug ? cleanText(body.slug, 150) : name);
   if (!slug || slug.length < 2) {
-    throw new AppError(
-      "Could not generate a valid URL slug from category name.",
-      400,
-    );
+    throw new AppError("Could not generate a valid URL slug.", 400);
   }
 
   let parentId = null;
-  if (
-    body.parentId !== undefined &&
-    body.parentId !== null &&
-    body.parentId !== ""
-  ) {
+  if (body.parentId) {
     if (typeof body.parentId !== "string" || !UUID_REGEX.test(body.parentId)) {
       throw new AppError("Invalid parent category ID format.", 400);
     }
     parentId = body.parentId;
   }
 
-  return { name, slug, parentId };
+  return {
+    name,
+    slug,
+    parentId,
+    imageUrl: cleanHttpsUrl(body.imageUrl),
+    iconUrl: cleanHttpsUrl(body.iconUrl),
+  };
 };
 
 export const validateCategoryIdParam = (id) => {

@@ -7,6 +7,7 @@ import {
   getProducts,
   getProductDetail,
   deleteProduct,
+  updateProduct,
 } from "./product.controller.js";
 
 const router = Router();
@@ -32,6 +33,12 @@ router.delete(
   requireAuth,
   rateLimiter(20, 60, "prod_delete"),
   deleteProduct,
+);
+router.put(
+  "/:id",
+  requireAuth,
+  rateLimiter(30, 60, "prod_update"),
+  updateProduct,
 );
 
 export default router;

@@ -7,6 +7,7 @@ import {
   trackOrderPublic,
   getMerchantOrders,
   verifyOrderDelivery,
+  updateOrderStatus,
 } from "./order.controller.js";
 
 const router = Router();
@@ -37,6 +38,12 @@ router.post(
   requireAuth,
   rateLimiter(20, 60, "order_delivery_pin"),
   verifyOrderDelivery,
+);
+router.put(
+  "/:id/status",
+  requireAuth,
+  rateLimiter(30, 60, "order_status_put"),
+  updateOrderStatus,
 );
 
 export default router;

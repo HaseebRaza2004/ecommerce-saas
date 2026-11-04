@@ -39,6 +39,11 @@ export const requireAuth = async (req, res, next) => {
       token,
       process.env.JWT_SECRET || "super_secret_fallback_key_2026",
     );
+    if (decoded.role === "customer" || decoded.tokenType === "customer") {
+      return next(
+        new AppError("Access denied. Merchant admin privileges required.", 403),
+      );
+    }
 
     req.merchantId = decoded.id;
     req.userRole = decoded.role || "super_merchant";

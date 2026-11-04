@@ -9,7 +9,7 @@ const { categories } = schema;
 // Service to create a new category (main or sub-category) for a specific merchant, ensuring proper validation and uniqueness of the category path.
 export const createCategoryService = async (
   merchantId,
-  { name, slug, parentId },
+  { name, slug, parentId, imageUrl, iconUrl },
 ) => {
   let parentPath = null;
 
@@ -56,6 +56,8 @@ export const createCategoryService = async (
       slug,
       parentId,
       path: fullPath,
+      imageUrl,
+      iconUrl,
     })
     .returning();
 

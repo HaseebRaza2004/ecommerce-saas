@@ -6,6 +6,7 @@ import {
 import { createCategoryService } from "./services/createCategory.service.js";
 import { getCategoriesService } from "./services/getCategories.service.js";
 import { deleteCategoryService } from "./services/deleteCategory.service.js";
+import { updateCategoryService } from "./services/updateCategory.service.js";
 
 export const createCategory = async (req, res, next) => {
   try {
@@ -36,6 +37,21 @@ export const deleteCategory = async (req, res, next) => {
       "Category and sub-categories deleted.",
       result,
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateCategory = async (req, res, next) => {
+  try {
+    const categoryId = validateCategoryIdParam(req.params.id);
+    const cleanData = validateCreateCategory(req.body);
+    const updated = await updateCategoryService(
+      req.merchantId,
+      categoryId,
+      cleanData,
+    );
+    return sendResponse(res, 200, "Category updated successfully.", updated);
   } catch (error) {
     next(error);
   }
