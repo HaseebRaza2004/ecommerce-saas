@@ -15,6 +15,7 @@ import paymentRoutes from "./api/v1/payments/payment.routes.js";
 import customerRoutes from "./api/v1/customers/customer.routes.js";
 import storefrontRoutes from "./api/v1/storefront/storefront.routes.js";
 import reviewRoutes from "./api/v1/reviews/review.routes.js";
+import omniAuthRoutes from "./api/v1/omniAuth/omniAuth.routes.js";
 // Temporary request logger middleware for debugging purposes
 import { requestLogger } from "./core/middlewares/requestLogger.js";
 
@@ -55,6 +56,7 @@ app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/storefront", storefrontRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
+app.use("/api/v1/omni-auth", omniAuthRoutes);
 
 // Global Error Handler
 app.use(globalErrorHandler);
