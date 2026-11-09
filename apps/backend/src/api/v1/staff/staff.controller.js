@@ -1,5 +1,11 @@
 import { sendResponse } from "../../../utils/responseHandler.js";
 import { sendTokenResponse } from "../../../utils/jwt.util.js";
+import { extractClientIp } from "../../../utils/ip.util.js";
+import {
+  checkAccountLockout,
+  recordFailedLogin,
+  evaluateLoginAnomaly,
+} from "../../../core/security/loginAnomaly.service.js";
 import {
   validateCreateStaffInput,
   validateStaffLoginInput,
@@ -22,16 +28,30 @@ export const createStaff = async (req, res, next) => {
 };
 
 export const loginStaff = async (req, res, next) => {
+  const ip = extractClientIp(req);
+  let lockKey = null;
   try {
     const cleanData = validateStaffLoginInput(req.body);
+    lockKey = `staff:${req.merchantId}:${cleanData.email}`;
+    await checkAccountLockout(lockKey);
+
     const staffPayload = await loginStaffService(req.merchantId, cleanData);
-    return sendTokenResponse(
+    await evaluateLoginAnomaly(
+      staffPayload.staff_id,
+      ip,
+      req.headers["user-agent"],
+    );
+
+    return await sendTokenResponse(
       staffPayload,
       200,
       res,
       "Staff logged in successfully.",
+      req,
     );
   } catch (error) {
+    if (error.statusCode === 401 && lockKey)
+      await recordFailedLogin(lockKey, ip);
     next(error);
   }
 };

@@ -7,6 +7,11 @@ import {
   getAdminMe,
   adminLogout,
 } from "./auth.controller.js";
+import {
+  refreshAdminSession,
+  getActiveSessions,
+  forceLogoutAllDevices,
+} from "./session.controller.js";
 
 const router = Router();
 
@@ -38,6 +43,27 @@ router.post(
   requireAuth,
   rateLimiter(10, 60, "auth_logout"),
   adminLogout,
+);
+
+// 5. Refresh Admin Session: Rotate Access JWT + Refresh Token (Protected by Rate Limit)
+router.post(
+  "/admin/refresh",
+  rateLimiter(20, 60, "auth_refresh"),
+  refreshAdminSession,
+);
+// 6. List Active Sessions: Protected by JWT Guard + Rate Limit (30 req/min)
+router.get(
+  "/admin/sessions",
+  requireAuth,
+  rateLimiter(30, 60, "auth_sessions"),
+  getActiveSessions,
+);
+// 7. Force Logout All Devices: Protected by JWT Guard + Rate Limit (5 req/5 mins)
+router.post(
+  "/admin/logout-all",
+  requireAuth,
+  rateLimiter(5, 300, "auth_kill_all"),
+  forceLogoutAllDevices,
 );
 
 export default router;
