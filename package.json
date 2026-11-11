@@ -26,5 +26,12 @@
   "homepage": "https://github.com/HaseebRaza2004/ecommerce-saas#readme",
   "devDependencies": {
     "turbo": "^2.11.7"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true,
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "unrs-resolver@1.12.2": true
   }
 }
