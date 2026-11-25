@@ -6,7 +6,7 @@ import {
   useEffect,
   useSyncExternalStore,
 } from "react";
-import { DICTIONARY, SUPPORTED_LOCALES } from "@/config/i18n.dictionary";
+import { LOCALES_MAP, SUPPORTED_LOCALES } from "@/data/locales";
 import { readUiPref, subscribeUiPrefs, writeUiPref } from "@/lib/uiPrefsStore";
 
 const LOCALE_KEY = "commercia_ui_locale";
@@ -36,7 +36,7 @@ export function LocaleProvider({ children }) {
   };
 
   const t = (key) =>
-    DICTIONARY[localeMeta.code]?.[key] || DICTIONARY.en[key] || key;
+    LOCALES_MAP[localeMeta.code]?.[key] || LOCALES_MAP.en[key] || key;
 
   return (
     <LocaleContext.Provider
@@ -58,4 +58,4 @@ export function useLocale() {
   const ctx = useContext(LocaleContext);
   if (!ctx) throw new Error("useLocale must be used inside LocaleProvider");
   return ctx;
-}
+};

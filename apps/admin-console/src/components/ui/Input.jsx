@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
+import { Button } from "@/components/ui/Button";
 
 export function Input({
   label,
@@ -10,6 +11,7 @@ export function Input({
   hint,
   icon: Icon,
   type = "text",
+  variant = "default",
   forceLtr = false,
   className = "",
   ...props
@@ -21,6 +23,18 @@ export function Input({
   const isPassword = type === "password";
   const resolvedType = isPassword && showPassword ? "text" : type;
   const inputDir = forceLtr ? "ltr" : dir;
+
+  if (variant === "ghost") {
+    return (
+      <input
+        id={id}
+        type={resolvedType}
+        dir={inputDir}
+        className={`w-full bg-transparent text-sm text-ink placeholder:text-muted focus:outline-hidden ${className}`}
+        {...props}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-1.5 text-start">
@@ -48,18 +62,19 @@ export function Input({
           {...props}
         />
         {isPassword && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="iconSm"
             onClick={() => setShowPassword((prev) => !prev)}
             aria-label={showPassword ? "Hide password" : "Show password"}
-            className="absolute inset-e-2.5 rounded-lg p-1 text-muted transition-colors hover:text-ink"
+            className="absolute inset-e-1.5"
           >
             {showPassword ? (
               <EyeOff className="size-4" />
             ) : (
               <Eye className="size-4" />
             )}
-          </button>
+          </Button>
         )}
       </div>
       {error && (
@@ -78,4 +93,4 @@ export function Input({
       )}
     </div>
   );
-}
+};

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 export function SlideOverDrawer({
   open,
@@ -29,17 +30,16 @@ export function SlideOverDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end"
+      className="fixed inset-0 z-50 flex justify-end p-1 sm:p-1.5"
       role="dialog"
       aria-modal="true"
     >
-      <button
-        type="button"
-        aria-label="Close panel backdrop"
+      <div
+        aria-hidden="true"
         onClick={onClose}
-        className="fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity"
+        className="fixed inset-0 bg-black/40 backdrop-blur-[2px]"
       />
-      <aside className="animate-drawer-in relative z-10 flex h-full w-full max-w-xl flex-col border-s border-line bg-surface shadow-2xl lg:w-[40vw] lg:min-w-110">
+      <aside className="animate-drawer-in relative z-10 flex h-full w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl lg:w-[40vw] lg:min-w-105">
         <header className="flex items-start justify-between gap-3 border-b border-line px-5 py-4 text-start">
           <div className="min-w-0">
             <h2 className="truncate text-base font-semibold text-ink">
@@ -49,14 +49,14 @@ export function SlideOverDrawer({
               <p className="mt-0.5 text-xs text-muted">{subtitle}</p>
             )}
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="iconSm"
             onClick={onClose}
             aria-label="Close panel"
-            className="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-subtle hover:text-ink"
           >
             <X className="size-4" />
-          </button>
+          </Button>
         </header>
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer && (
@@ -67,4 +67,4 @@ export function SlideOverDrawer({
       </aside>
     </div>
   );
-}
+};
