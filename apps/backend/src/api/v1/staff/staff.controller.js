@@ -16,6 +16,8 @@ import {
   getStaffListService,
   deleteStaffService,
 } from "./services/manageStaff.service.js";
+import { validateLoginInput } from "../auth/validators/login.validator.js";
+import { adminLoginService } from "../auth/services/loginAdmin.service.js";
 
 export const createStaff = async (req, res, next) => {
   try {
@@ -31,27 +33,32 @@ export const loginStaff = async (req, res, next) => {
   const ip = extractClientIp(req);
   let lockKey = null;
   try {
-    const cleanData = validateStaffLoginInput(req.body);
-    lockKey = `staff:${req.merchantId}:${cleanData.email}`;
+    const loginInput = validateLoginInput(req.body);
+    lockKey = `console:${loginInput.identifier}`;
     await checkAccountLockout(lockKey);
 
-    const staffPayload = await loginStaffService(req.merchantId, cleanData);
-    await evaluateLoginAnomaly(
-      staffPayload.staff_id,
-      ip,
-      req.headers["user-agent"],
-    );
+    const result = await adminLoginService(loginInput);
+    if (result.requires_store_selection) {
+      return sendResponse(
+        res,
+        200,
+        "Multiple stores found. Please select a store.",
+        result,
+      );
+    }
 
+    await evaluateLoginAnomaly(result.actor_id, ip, req.headers["user-agent"]);
     return await sendTokenResponse(
-      staffPayload,
+      result,
       200,
       res,
       "Staff logged in successfully.",
       req,
     );
   } catch (error) {
-    if (error.statusCode === 401 && lockKey)
+    if ((error.statusCode === 401 || error.status === 401) && lockKey) {
       await recordFailedLogin(lockKey, ip);
+    }
     next(error);
   }
 };

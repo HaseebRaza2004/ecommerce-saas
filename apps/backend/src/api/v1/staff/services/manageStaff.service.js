@@ -3,6 +3,7 @@ import { db, schema } from "../../../../config/db.client.js";
 import { AppError } from "../../../../core/errors/AppError.js";
 import { getOrSetTenantCache } from "../../../../core/redis/stampedeCache.service.js";
 import { invalidateTenantCache } from "../../../../core/redis/tenantCache.service.js";
+import { revokeAllUserSessions } from "../../../../core/security/sessionManager.service.js";
 
 const { staffMembers } = schema;
 
@@ -50,6 +51,9 @@ export const deleteStaffService = async (merchantId, staffId) => {
     throw new AppError("Staff member not found in your store.", 404);
   }
 
-  await invalidateTenantCache(merchantId);
+  await Promise.all([
+    invalidateTenantCache(merchantId),
+    revokeAllUserSessions(staffId),
+  ]);
   return deleted;
 };

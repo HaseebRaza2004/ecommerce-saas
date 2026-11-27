@@ -9,19 +9,26 @@ import {
   revokeAllUserSessions,
 } from "../../../core/security/sessionManager.service.js";
 
-// Rotate Refresh Token & Issue Fresh 15m Access JWT
 export const refreshAdminSession = async (req, res, next) => {
   try {
     const rawRefresh = req.cookies?.refresh_jwt || req.body?.refreshToken;
     const ip = extractClientIp(req);
-    const ua = req.headers["user-agent"] || "API-Client";
 
-    const { userId, role, sessionId, newRefreshToken, authVer } =
-      await rotateRefreshTokenService(rawRefresh, ip, ua);
+    const {
+      actorId,
+      merchantId,
+      staffId,
+      role,
+      sessionId,
+      newRefreshToken,
+      authVer,
+    } = await rotateRefreshTokenService(rawRefresh, ip);
 
     const newAccessJwt = jwt.sign(
       {
-        id: userId,
+        id: merchantId,
+        actorId,
+        staffId,
         role,
         sid: sessionId,
         ver: String(authVer),
@@ -50,24 +57,22 @@ export const refreshAdminSession = async (req, res, next) => {
 
     return sendResponse(res, 200, "Session token rotated securely.", {
       session_id: sessionId,
+      role,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// List All Active Logged-In Devices
 export const getActiveSessions = async (req, res, next) => {
   try {
-    const sids = await redisClient.smembers(`sess:list:${req.merchantId}`);
+    const sids = await redisClient.smembers(`sess:list:${req.actorId}`);
     if (!sids || sids.length === 0) {
       return sendResponse(res, 200, "Active device sessions fetched.", []);
     }
 
     const pipeline = redisClient.pipeline();
-    for (const sid of sids) {
-      pipeline.get(`sess:${req.merchantId}:${sid}`);
-    }
+    for (const sid of sids) pipeline.get(`sess:${req.actorId}:${sid}`);
     const results = await pipeline.exec();
 
     const sessions = [];
@@ -85,10 +90,9 @@ export const getActiveSessions = async (req, res, next) => {
   }
 };
 
-// Force Logout All Devices 
 export const forceLogoutAllDevices = async (req, res, next) => {
   try {
-    const result = await revokeAllUserSessions(req.merchantId);
+    const result = await revokeAllUserSessions(req.actorId);
     clearTokenCookie(res);
     return sendResponse(
       res,

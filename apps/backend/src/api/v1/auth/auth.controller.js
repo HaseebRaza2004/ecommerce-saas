@@ -15,6 +15,7 @@ import { validateRegisterInput } from "./validators/register.validator.js";
 import { adminRegisterService } from "./services/registerAdmin.service.js";
 import { adminLoginService } from "./services/loginAdmin.service.js";
 import { getAdminProfileService } from "./services/getAdminProfile.service.js";
+import { consumeStoreSelectionService } from "./services/consoleStoreSelect.service.js";
 
 export const adminRegister = async (req, res, next) => {
   try {
@@ -34,39 +35,68 @@ export const adminRegister = async (req, res, next) => {
 
 export const adminLogin = async (req, res, next) => {
   const ip = extractClientIp(req);
+  let lockKey = null;
   try {
-    const { email, password } = validateLoginInput(req.body);
-    await checkAccountLockout(email);
+    const loginInput = validateLoginInput(req.body);
+    lockKey = `console:${loginInput.identifier}`;
+    await checkAccountLockout(lockKey);
 
-    const merchantData = await adminLoginService(email, password);
-    await evaluateLoginAnomaly(
-      merchantData.merchant_id,
-      ip,
-      req.headers["user-agent"],
-    );
+    const result = await adminLoginService(loginInput);
+    if (result.requires_store_selection) {
+      return sendResponse(
+        res,
+        200,
+        "Multiple stores found. Please select a store to continue.",
+        result,
+      );
+    }
 
+    await evaluateLoginAnomaly(result.actor_id, ip, req.headers["user-agent"]);
     return await sendTokenResponse(
-      merchantData,
+      result,
       200,
       res,
-      "Admin logged in successfully.",
+      "Authenticated into Admin Console.",
       req,
     );
   } catch (error) {
-    if (error.statusCode === 401 && req.body?.email) {
-      await recordFailedLogin(String(req.body.email), ip);
+    if ((error.statusCode === 401 || error.status === 401) && lockKey) {
+      await recordFailedLogin(lockKey, ip);
     }
+    next(error);
+  }
+};
+
+export const selectConsoleStore = async (req, res, next) => {
+  try {
+    const { selectionToken, merchantId } = req.body || {};
+    const account = await consumeStoreSelectionService(
+      selectionToken,
+      merchantId,
+    );
+    return await sendTokenResponse(
+      account,
+      200,
+      res,
+      "Store selected and logged in.",
+      req,
+    );
+  } catch (error) {
     next(error);
   }
 };
 
 export const getAdminMe = async (req, res, next) => {
   try {
-    const profile = await getAdminProfileService(req.merchantId);
+    const profile = await getAdminProfileService(
+      req.merchantId,
+      req.staffId,
+      req.userRole,
+    );
     return sendResponse(
       res,
       200,
-      "Merchant profile fetched successfully.",
+      "Console profile fetched successfully.",
       profile,
     );
   } catch (error) {

@@ -3,9 +3,11 @@ import crypto from "crypto";
 import { createDeviceSession } from "../core/security/sessionManager.service.js";
 import { extractClientIp } from "./ip.util.js";
 
-// Issue Short-Lived Access JWT (15m) + Rotatable Refresh Token (7d) + Device Session
+/**
+ * 🛡️ Issue Access JWT (15m) + Rotatable Refresh Token (7d) for Owner, SaaS Admin, or Staff
+ */
 export const sendTokenResponse = async (
-  merchant,
+  account,
   statusCode,
   res,
   message,
@@ -13,10 +15,14 @@ export const sendTokenResponse = async (
 ) => {
   const ip = req ? extractClientIp(req) : "0.0.0.0";
   const userAgent = req?.headers["user-agent"] || "API-Client";
-  const role = merchant.role || "super_merchant";
+  const role = account.role || "super_merchant";
+  const staffId = account.staff_id || null;
+  const actorId = account.actor_id || staffId || account.merchant_id;
 
   const { sessionId, rawRefreshToken, authVer } = await createDeviceSession(
-    merchant.merchant_id,
+    actorId,
+    account.merchant_id,
+    staffId,
     role,
     ip,
     userAgent,
@@ -24,7 +30,9 @@ export const sendTokenResponse = async (
 
   const token = jwt.sign(
     {
-      id: merchant.merchant_id,
+      id: account.merchant_id,
+      actorId,
+      staffId,
       role,
       sid: sessionId,
       ver: String(authVer),
@@ -46,7 +54,6 @@ export const sendTokenResponse = async (
     ...baseCookieOpts,
     expires: new Date(Date.now() + 15 * 60 * 1000),
   });
-
   res.cookie("refresh_jwt", rawRefreshToken, {
     ...baseCookieOpts,
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -57,12 +64,15 @@ export const sendTokenResponse = async (
     status: statusCode,
     message,
     data: {
-      merchant_id: merchant.merchant_id,
-      staff_id: merchant.staff_id || null,
+      merchant_id: account.merchant_id,
+      staff_id: staffId,
+      actor_id: actorId,
       role,
-      store_name: merchant.store_name,
-      domain_url: merchant.domain_url,
-      status: merchant.status,
+      name: account.name || account.store_name,
+      email: account.email || null,
+      store_name: account.store_name,
+      domain_url: account.domain_url,
+      status: account.status,
       session_id: sessionId,
     },
   });

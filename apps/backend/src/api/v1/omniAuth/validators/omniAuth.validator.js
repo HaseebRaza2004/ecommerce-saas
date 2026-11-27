@@ -67,5 +67,12 @@ export const validateOmniAuthInput = (body) => {
     domainUrl: body.domainUrl
       ? cleanStr(body.domainUrl, 255).toLowerCase()
       : null,
+    merchantId:
+      typeof body.merchantId === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        body.merchantId,
+      )
+        ? body.merchantId
+        : null,
   };
 };

@@ -4,6 +4,7 @@ import { requireAuth } from "../../../core/middlewares/auth.guard.js";
 import {
   adminRegister,
   adminLogin,
+  selectConsoleStore,
   getAdminMe,
   adminLogout,
 } from "./auth.controller.js";
@@ -64,6 +65,13 @@ router.post(
   requireAuth,
   rateLimiter(5, 300, "auth_kill_all"),
   forceLogoutAllDevices,
+);
+
+// 8. Select Store for Multi-Store Admin: Protected by Rate Limit (10 req/5 mins)
+router.post(
+  "/admin/select-store",
+  rateLimiter(10, 300, "auth_select_store"),
+  selectConsoleStore,
 );
 
 export default router;

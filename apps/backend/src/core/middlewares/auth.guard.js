@@ -12,6 +12,9 @@ export const extractToken = (req) => {
   return null;
 };
 
+/**
+ * 🛡️ Verify Console JWT (Owner, SaaS Super Admin, or Staff) & Enforce Per-Actor Kill Switch
+ */
 export const requireAuth = async (req, res, next) => {
   try {
     const token = extractToken(req);
@@ -24,14 +27,14 @@ export const requireAuth = async (req, res, next) => {
     );
     if (decoded.role === "customer" || decoded.tokenType === "customer") {
       return next(
-        new AppError("Access denied. Merchant admin privileges required.", 403),
+        new AppError("Access denied. Admin Console privileges required.", 403),
       );
     }
 
-    // Parallel Check: Single Token Blacklist + Global 'Force Logout All Devices' Version
+    const actorId = decoded.actorId || decoded.id;
     const [revoked, activeAuthVer] = await Promise.all([
       isTokenBlacklisted(token),
-      redisClient.get(`auth:ver:${decoded.id}`),
+      redisClient.get(`auth:ver:${actorId}`),
     ]);
 
     if (revoked) return next(new AppError("Session has been logged out.", 401));
@@ -49,6 +52,8 @@ export const requireAuth = async (req, res, next) => {
     }
 
     req.merchantId = decoded.id;
+    req.actorId = actorId;
+    req.staffId = decoded.staffId || null;
     req.userRole = decoded.role || "super_merchant";
     req.sessionId = decoded.sid || null;
     req.rawToken = token;
@@ -63,13 +68,19 @@ export const requireAuth = async (req, res, next) => {
   }
 };
 
+/**
+ * 👮 RBAC Guard (Platform saas_super_admin has top-tier access across permitted routes)
+ */
 export const restrictTo = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!allowedRoles.includes(req.userRole)) {
-      return next(
-        new AppError("Access denied. Insufficient role permissions.", 403),
-      );
+    if (
+      req.userRole === "saas_super_admin" ||
+      allowedRoles.includes(req.userRole)
+    ) {
+      return next();
     }
-    next();
+    return next(
+      new AppError("Access denied. Insufficient role permissions.", 403),
+    );
   };
 };

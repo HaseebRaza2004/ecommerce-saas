@@ -62,7 +62,7 @@ export const merchantOmniAuth = async (req, res, next) => {
   let lockKey = null;
   try {
     const data = validateOmniAuthInput(req.body);
-    lockKey = `merch:${data.email || data.phone || ip}`;
+    lockKey = `console:${data.email || data.phone || ip}`;
     await checkAccountLockout(lockKey);
 
     if (data.provider === "whatsapp_otp") {
@@ -71,23 +71,28 @@ export const merchantOmniAuth = async (req, res, next) => {
       Object.assign(data, await verifyOAuthIdentityService(data));
     }
 
-    const merchant = await resolveMerchantIdentityService(data);
-    await evaluateLoginAnomaly(
-      merchant.merchant_id,
-      ip,
-      req.headers["user-agent"],
-    );
+    const result = await resolveMerchantIdentityService(data);
+    if (result.requires_store_selection) {
+      return sendResponse(
+        res,
+        200,
+        "Multiple stores found. Please select a store to continue.",
+        result,
+      );
+    }
 
+    await evaluateLoginAnomaly(result.actor_id, ip, req.headers["user-agent"]);
     return await sendTokenResponse(
-      merchant,
+      result,
       200,
       res,
-      `Merchant authenticated via ${data.provider} into unified store.`,
+      `Authenticated via ${data.provider} into Admin Console.`,
       req,
     );
   } catch (error) {
-    if (error.statusCode === 401 && lockKey)
+    if ((error.statusCode === 401 || error.status === 401) && lockKey) {
       await recordFailedLogin(lockKey, ip);
+    }
     next(error);
   }
 };

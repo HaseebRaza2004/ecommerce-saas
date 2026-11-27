@@ -1,64 +1,85 @@
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, schema } from "../../../../config/db.client.js";
 import { AppError } from "../../../../core/errors/AppError.js";
 import { syncDomainCache } from "../../../../core/redis/domainCache.service.js";
 import { adminRegisterService } from "../../auth/services/registerAdmin.service.js";
+import { resolveConsoleAccountService } from "../../auth/services/resolveConsoleAccount.service.js";
+import { createStoreSelectionSession } from "../../auth/services/consoleStoreSelect.service.js";
 
 const { merchants } = schema;
 
-// Resolve Merchant Identity Across Multiple OmniAuth Providers (Google, Apple, WhatsApp, Email/Password)
+/**
+ * 🏢 Unified Console Omni-Auth Resolver (Owner + SaaS Super Admin + Staff — Zero Domain!)
+ */
 export const resolveMerchantIdentityService = async (data) => {
-  const { provider, email, phone, password, storeName, domainUrl } = data;
+  const {
+    provider,
+    email,
+    phone,
+    password,
+    storeName,
+    domainUrl,
+    merchantId = null,
+  } = data;
 
-  const conditions = [];
-  if (email) conditions.push(eq(merchants.email, email));
-  if (phone) conditions.push(eq(merchants.phone, phone));
+  const candidates = await resolveConsoleAccountService({
+    email,
+    phone,
+    targetMerchantId: merchantId,
+  });
 
-  const rows = await db
-    .select()
-    .from(merchants)
-    .where(or(...conditions))
-    .limit(1);
-
-  const merchant = rows[0];
-
-  // 1. Existing Merchant Found -> Link any missing email/phone & Login to the SAME Store
-  if (merchant) {
-    if (merchant.status === "suspended") {
-      throw new AppError("Your store is currently suspended.", 403);
-    }
+  // 1. Existing Owner / SaaS Super Admin / Active Staff Found
+  if (candidates.length > 0) {
+    let validAccounts = candidates;
 
     if (provider === "email_password") {
-      if (!password || !(await bcrypt.compare(password, merchant.password))) {
-        throw new AppError("Invalid merchant email/phone or password.", 401);
+      validAccounts = [];
+      for (const acc of candidates) {
+        if (
+          acc.password &&
+          password &&
+          (await bcrypt.compare(password, acc.password))
+        ) {
+          validAccounts.push(acc);
+        }
+      }
+      if (validAccounts.length === 0) {
+        throw new AppError("Invalid email/phone or password.", 401);
       }
     }
 
-    if ((phone && !merchant.phone) || (email && merchant.email !== email)) {
-      await db
-        .update(merchants)
-        .set({ phone: phone || merchant.phone })
-        .where(eq(merchants.id, merchant.id));
+    if (validAccounts.length > 1) {
+      return await createStoreSelectionSession(validAccounts);
     }
 
-    const payload = {
-      merchant_id: merchant.id,
-      store_name: merchant.storeName,
-      domain_url: merchant.domainUrl,
-      db_region: merchant.dbRegion,
-      status: merchant.status,
-    };
-    syncDomainCache(merchant.domainUrl, payload);
-    return payload;
+    const { password: _, ...safeAccount } = validAccounts[0];
+
+    // Auto-link missing phone on Owner record if authenticated via WhatsApp/Apple
+    if (!safeAccount.staff_id && phone && !safeAccount.phone) {
+      await db
+        .update(merchants)
+        .set({ phone })
+        .where(eq(merchants.id, safeAccount.merchant_id));
+      safeAccount.phone = phone;
+    }
+
+    syncDomainCache(safeAccount.domain_url, {
+      merchant_id: safeAccount.merchant_id,
+      store_name: safeAccount.store_name,
+      domain_url: safeAccount.domain_url,
+      db_region: safeAccount.db_region,
+      status: safeAccount.status,
+    });
+    return safeAccount;
   }
 
-  // 2. If Merchant doesn't exist yet -> Require storeName & domainUrl for 1-click OAuth Onboarding
+  // 2. No Console Access Found -> Allow 1-Click New Store Onboarding ONLY if storeName + domainUrl provided
   if (!storeName || !domainUrl || !email) {
     throw new AppError(
-      "No store found for this account. Please provide storeName, domainUrl, and email to register.",
-      404,
+      "Access denied: No Admin Console (Owner or Staff) account found for this email or phone.",
+      403,
     );
   }
 

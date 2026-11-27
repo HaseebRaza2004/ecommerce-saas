@@ -3,7 +3,6 @@ import {
   requireAuth,
   restrictTo,
 } from "../../../core/middlewares/auth.guard.js";
-import { resolveTenant } from "../../../core/middlewares/tenant.guard.js";
 import { rateLimiter } from "../../../core/middlewares/rateLimiter.js";
 import {
   createStaff,
@@ -14,15 +13,10 @@ import {
 
 const router = Router();
 
-//  Staff Login (Requires Store Domain Context ?domain=electrohub.pk)
-router.post(
-  "/login",
-  resolveTenant,
-  rateLimiter(5, 900, "staff_login"),
-  loginStaff,
-);
+//  Zero-Domain Unified Staff Login Alias
+router.post("/login", rateLimiter(5, 900, "staff_login"), loginStaff);
 
-//  Strictly Super-Merchant Owner Routes (Staff cannot create/delete other staff!)
+//  Strictly Super-Merchant / SaaS Super Admin Routes
 router.use(requireAuth, restrictTo("super_merchant"));
 router.post("/", rateLimiter(20, 60, "staff_create"), createStaff);
 router.get("/", rateLimiter(60, 60, "staff_list"), getStaffList);
